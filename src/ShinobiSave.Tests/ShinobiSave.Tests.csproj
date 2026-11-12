@@ -1,0 +1,20 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!-- Plain console test runner (no test framework, so it builds offline).
+       Usage: ShinobiSave.Tests <folder with Customize_v002.sav / System_v002.sav / backup\...> -->
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net8.0-windows</TargetFramework>
+    <UseWindowsForms>true</UseWindowsForms>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <RootNamespace>ShinobiSave.Tests</RootNamespace>
+    <RollForward>Major</RollForward>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\ShinobiSave.Core\ShinobiSave.Core.csproj" />
+    <ProjectReference Include="..\ShinobiSave.Editor\ShinobiSave.Editor.csproj" />
+  </ItemGroup>
+
+</Project>

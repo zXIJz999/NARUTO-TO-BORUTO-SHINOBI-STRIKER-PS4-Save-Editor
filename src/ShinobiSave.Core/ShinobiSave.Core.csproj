@@ -1,0 +1,16 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <RootNamespace>ShinobiSave.Core</RootNamespace>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <EmbeddedResource Include="ids.txt" LogicalName="ShinobiSave.Core.ids.txt" />
+    <EmbeddedResource Include="schema.txt" LogicalName="ShinobiSave.Core.schema.txt" />
+    <EmbeddedResource Include="names.tsv" LogicalName="ShinobiSave.Core.names.tsv" />
+  </ItemGroup>
+
+</Project>

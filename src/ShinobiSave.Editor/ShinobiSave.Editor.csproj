@@ -1,0 +1,32 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net8.0-windows</TargetFramework>
+    <Nullable>enable</Nullable>
+    <UseWindowsForms>true</UseWindowsForms>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <RootNamespace>ShinobiSave.Editor</RootNamespace>
+    <AssemblyName>ShinobiStrikerSaveEditor</AssemblyName>
+    <RollForward>Major</RollForward>
+  </PropertyGroup>
+
+  <!-- `dotnet publish -c Release -r win-x64` produces one self-contained exe. -->
+  <PropertyGroup Condition="'$(RuntimeIdentifier)' != ''">
+    <SelfContained>true</SelfContained>
+    <PublishSingleFile>true</PublishSingleFile>
+    <IncludeNativeLibrariesForSelfExtract>true</IncludeNativeLibrariesForSelfExtract>
+    <EnableCompressionInSingleFile>true</EnableCompressionInSingleFile>
+    <DebugType>none</DebugType>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="DevExpress.Win" Version="25.2.8" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\ShinobiSave.Core\ShinobiSave.Core.csproj" />
+    <InternalsVisibleTo Include="ShinobiSave.Tests" />
+  </ItemGroup>
+
+</Project>
