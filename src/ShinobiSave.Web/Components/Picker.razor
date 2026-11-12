@@ -1,0 +1,87 @@
+@* A drop-down of named choices that stores IDs. Click, then type to search; optional rank sort. *@
+<div class="picker">
+    <button class="value" @onclick="Toggle" type="button">
+        <span>@Shown</span>
+        <span class="info">@CurrentInfo &#9662;</span>
+    </button>
+    @if (_open)
+    {
+        <div class="backdrop" @onclick="() => _open = false"></div>
+        <div class="pop">
+            <div class="search">
+                <input type="text" placeholder="Type to search..." @bind="_query" @bind:event="oninput" @ref="_search" />
+                @if (Sortable)
+                {
+                    <select @bind="_sort">
+                        <option value="0">Game order</option>
+                        <option value="1">A-Z</option>
+                        <option value="2">Best rank first</option>
+                        <option value="3">Worst rank first</option>
+                    </select>
+                }
+            </div>
+            <div class="list">
+                <Virtualize Items="Filtered" ItemSize="33" Context="c">
+                    <div class="opt @(c.Id == Value ? "current" : "")" @onclick="() => Choose(c.Id)">
+                        <span>@c.Name</span>
+                        @if (ShowInfo) { <span class="info">@c.Info</span> }
+                    </div>
+                </Virtualize>
+            </div>
+        </div>
+    }
+</div>
+
+@code {
+    [Parameter] public List<NameEntry> Choices { get; set; } = new();
+    [Parameter] public string? Value { get; set; }
+    [Parameter] public EventCallback<string> ValueChanged { get; set; }
+    [Parameter] public bool ShowInfo { get; set; }
+    [Parameter] public bool Sortable { get; set; }
+    [Parameter] public string NullText { get; set; } = "(game default)";
+
+    private bool _open;
+    private string _query = "";
+    private string _sort = "0";
+    private ElementReference _search;
+    private bool _focus;
+
+    private NameEntry? Current => Value == null ? null : Choices.FirstOrDefault(c => c.Id == Value);
+    private string Shown => Value == null ? NullText : Current?.Name ?? Value;
+    private string CurrentInfo => ShowInfo ? Current?.Info ?? "" : "";
+
+    private List<NameEntry> Filtered
+    {
+        get
+        {
+            IEnumerable<NameEntry> list = Choices;
+            if (_query.Length > 0)
+                list = list.Where(c => c.Name.Contains(_query, StringComparison.OrdinalIgnoreCase) || c.Id.Contains(_query, StringComparison.OrdinalIgnoreCase));
+            return _sort switch
+            {
+                "1" => list.OrderBy(c => c.Id == GameNames.None ? 0 : 1).ThenBy(c => c.Name, StringComparer.OrdinalIgnoreCase).ToList(),
+                "2" => list.OrderBy(c => c.Rank).ThenBy(c => c.Name, StringComparer.OrdinalIgnoreCase).ToList(),
+                "3" => list.OrderByDescending(c => c.Rank).ThenBy(c => c.Name, StringComparer.OrdinalIgnoreCase).ToList(),
+                _ => list.ToList(),
+            };
+        }
+    }
+
+    private void Toggle()
+    {
+        _open = !_open;
+        _query = "";
+        _focus = _open;
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (_focus) { _focus = false; try { await _search.FocusAsync(); } catch (InvalidOperationException) { } }
+    }
+
+    private async Task Choose(string id)
+    {
+        _open = false;
+        await ValueChanged.InvokeAsync(id);
+    }
+}

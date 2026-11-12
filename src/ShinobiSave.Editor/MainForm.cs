@@ -27,16 +27,8 @@ internal sealed class MainForm : XtraForm
         "ID_Counter_PlayerExperienceAccumulation", "ID_Counter_TotalMoney", "ID_Counter_PlayTimeMinute",
     };
 
-    /// <summary>Item kinds as stored in the item box, with the words shown for them.</summary>
-    private static readonly (string type, string label, string prefix, string table)[] ItemKinds =
-    {
-        ("Jacket", "Top", "ID_CustomJacket_", "DT_CustomJacket"),
-        ("Pants", "Bottom", "ID_CustomPants_", "DT_CustomPants"),
-        ("Accessory", "Accessory", "ID_CustomAccessory_", "DT_CustomAccessories"),
-        ("Facepaint", "Face paint", "ID_CustomFacePaint_", "DT_CustomFacePaint"),
-        ("Weapon", "Weapon", "ID_Weapon_", "DT_WeaponData"),
-        ("NinjaWeapon", "Ninja tool", "ID_CustomParts_", "DT_NinjaWeaponData"),
-    };
+    /// <summary>Item kinds as stored in the item box (shared with the web editor).</summary>
+    private static readonly (string type, string label, string prefix, string table)[] ItemKinds = EditOps.ItemKinds;
 
     private readonly SaveSchema _schema = SaveSchema.FromSeed();
     private readonly IdCatalog _catalog = IdCatalog.FromSeed();
@@ -644,22 +636,7 @@ internal sealed class MainForm : XtraForm
         showEmpty.CheckedChanged += (_, _) => ApplyFilter();
         ApplyFilter();
 
-        bool Put(string id)
-        {
-            var slot = items.FirstOrDefault(i => i.IsEmpty);
-            if (slot == null) return false;
-            var info = _names.Info(id);
-            slot.Clear();
-            slot.Id = id;
-            slot.Type = ItemKinds.FirstOrDefault(k => id.StartsWith(k.prefix, StringComparison.Ordinal)).type ?? "None";
-            // Clothes come with the skills the game gives them by default.
-            if (info != null && info.Skills.Length == 3 && info.Skills[0].StartsWith("ID_Skill_", StringComparison.Ordinal))
-            {
-                slot.Skill1 = info.Skills[0]; slot.Skill2 = info.Skills[1]; slot.Skill3 = info.Skills[2];
-                slot.Flag = true;
-            }
-            return true;
-        }
+        bool Put(string id) => EditOps.PutItem(items, _names, id);
         void AfterChange()
         {
             list.ResetBindings();

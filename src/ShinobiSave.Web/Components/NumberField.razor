@@ -1,0 +1,33 @@
+@inherits FieldBase
+@using System.Globalization
+<div class="row">
+    <label>@Label</label>
+    <input type="number" step="@(Decimal ? "0.05" : "1")" min="@LowText" max="@HighText" value="@Shown" @onchange="Changed" />
+    <span class="trail"></span>
+</div>
+
+@code {
+    [Parameter] public long Min { get; set; } = int.MinValue;
+    [Parameter] public long Max { get; set; } = int.MaxValue;
+    [Parameter] public bool Decimal { get; set; }
+
+    private bool IsByte => Slot.Def.Type == "ByteProperty";
+    private long Low => IsByte ? 0 : Min;
+    private long High => IsByte ? 255 : Max;
+    private string LowText => Decimal ? "" : Low.ToString(CultureInfo.InvariantCulture);
+    private string HighText => Decimal ? "" : High.ToString(CultureInfo.InvariantCulture);
+    private string Shown => Slot.Value == null ? "0" : Convert.ToString(Slot.Value, CultureInfo.InvariantCulture) ?? "0";
+
+    private void Changed(ChangeEventArgs e)
+    {
+        string text = e.Value?.ToString() ?? "";
+        if (Decimal)
+        {
+            if (float.TryParse(text, NumberStyles.Float, CultureInfo.InvariantCulture, out var f)) Set(f);
+            return;
+        }
+        if (!long.TryParse(text, NumberStyles.Integer, CultureInfo.InvariantCulture, out var n)) return;
+        n = Math.Clamp(n, Low, High);
+        Set(IsByte ? (byte)n : (object)(int)n);
+    }
+}

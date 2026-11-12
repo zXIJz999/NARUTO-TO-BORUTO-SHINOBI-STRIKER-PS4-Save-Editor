@@ -1,0 +1,43 @@
+@foreach (var node in Nodes)
+{
+    <div class="node">
+        <span style="padding-left:@(Depth * 18)px">
+            @if (node.Children != null)
+            {
+                <span class="twisty" @onclick="() => node.Expanded = !node.Expanded">@(node.Expanded ? "▾" : "▸")</span>
+            }
+            else
+            {
+                <span class="twisty"></span>
+            }
+            @node.Name
+        </span>
+        <span class="type">@node.Type</span>
+        <span>
+            @if (node.Set != null)
+            {
+                <input type="text" value="@node.Display()" @onchange="e => Edit(node, e.Value?.ToString() ?? string.Empty)" />
+            }
+            else
+            {
+                <span class="muted">@node.Display()</span>
+            }
+        </span>
+    </div>
+    @if (node.Expanded)
+    {
+        <TreeView Nodes="node.Kids" Depth="Depth + 1" />
+    }
+}
+
+@code {
+    [CascadingParameter] public EditorState S { get; set; } = default!;
+    [Parameter] public List<TreeNode> Nodes { get; set; } = new();
+    [Parameter] public int Depth { get; set; }
+
+    private void Edit(TreeNode node, string text)
+    {
+        if (node.Set!(text)) S.MarkDirty();
+        else if (text != node.Display()) S.Log($"'{text}' is not a valid {node.Type} for {node.Name}; value left unchanged.");
+    }
+}

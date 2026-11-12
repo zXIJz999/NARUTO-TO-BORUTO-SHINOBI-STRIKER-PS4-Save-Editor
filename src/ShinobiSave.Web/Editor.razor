@@ -1,0 +1,147 @@
+@implements IDisposable
+@inject IJSRuntime JS
+
+<CascadingValue Value="S" IsFixed="true">
+    <div class="app">
+        <div class="header">
+            <div class="brand">
+                <div class="title">@EditorState.AppTitle</div>
+                <div class="credit">@EditorState.Credit</div>
+            </div>
+            <div class="buttons">
+                <label class="file-button">Open a save<InputFile OnChange="OpenFile" accept=".sav,*/*" /></label>
+                <button class="primary" disabled="@(S.Save == null)" @onclick="Download">Save (download)</button>
+                <button disabled="@(S.Save == null)" @onclick="Undo">Undo all changes</button>
+            </div>
+            @if (S.Save != null)
+            {
+                <span class="muted">@S.FileName@(S.Dirty ? " (not saved yet)" : "")</span>
+            }
+        </div>
+
+        <div class="tabs">
+            @foreach (var t in Tabs)
+            {
+                <div class="tab @(t == Current ? "active" : "")" @onclick="() => _tab = t">@t</div>
+            }
+        </div>
+
+        <div class="content" @key="S.Save">
+            @switch (Current)
+            {
+                case "Start": <StartPage />; break;
+                case "Player": <PlayerPage />; break;
+                case "Character": <CharacterPage />; break;
+                case "Loadouts": <LoadoutsPage />; break;
+                case "Items": <ItemsPage />; break;
+                case "Unlocks":
+                    <MapPage MapName="m_gameFlags" OnOff="true" ValueCaption="On"
+                             Note="Everything the game marks as owned, unlocked or viewed. Pick a group, then switch things on or off." />
+                    break;
+                case "Stats":
+                    <MapPage MapName="m_gameCounters" ValueCaption="Amount"
+                             Note="Every number the game keeps count of: money, points, wins, master progress." />
+                    break;
+                case "Settings": <SystemPage />; break;
+                case "Advanced": <AdvancedPage />; break;
+                default: <AboutPage />; break;
+            }
+        </div>
+
+        <div class="footer">
+            <span class="status">@S.Status</span>
+            <span class="credit">@EditorState.AppTitle - @EditorState.Credit</span>
+        </div>
+    </div>
+
+    @if (S.Question != null)
+    {
+        <div class="dialog-back">
+            <div class="dialog">
+                <p>@S.Question</p>
+                <div class="actions">
+                    <button @onclick="() => S.Answer(false)">No</button>
+                    <button class="primary" @onclick="() => S.Answer(true)">Yes</button>
+                </div>
+            </div>
+        </div>
+    }
+</CascadingValue>
+
+@code {
+    private EditorState S { get; } = new();
+    private string _tab = "Start";
+    private bool _lastDirty;
+
+    private IEnumerable<string> Tabs => S.Save == null ? new[] { "Start", "About" }
+        : S.Save.Kind == ShinobiSaveKind.Customize ? new[] { "Player", "Character", "Loadouts", "Items", "Unlocks", "Stats", "Advanced", "About" }
+        : S.Save.Kind == ShinobiSaveKind.System ? new[] { "Settings", "Advanced", "About" }
+        : new[] { "Advanced", "About" };
+
+    private string Current => Tabs.Contains(_tab) ? _tab : Tabs.First();
+
+    protected override void OnInitialized()
+    {
+        S.Changed += OnChanged;
+        S.Log($"Ready. {S.Names.Count} item names loaded.");
+    }
+
+    private void OnChanged()
+    {
+        if (S.Dirty != _lastDirty)
+        {
+            _lastDirty = S.Dirty;
+            _ = JS.InvokeVoidAsync("zxSetDirty", S.Dirty);
+        }
+        StateHasChanged();
+    }
+
+    private void OpenFile(InputFileChangeEventArgs e)
+    {
+        if (S.Dirty)
+        {
+            S.Ask("You have changes that are not saved. Throw them away and open the new file?", async () => await Load(e.File));
+            return;
+        }
+        _ = Load(e.File);
+    }
+
+    private async Task Load(IBrowserFile file)
+    {
+        try
+        {
+            // Saves are about 0.5 MB; the default limit (500 KB) is too small.
+            using var stream = file.OpenReadStream(maxAllowedSize: 16 * 1024 * 1024);
+            using var ms = new MemoryStream();
+            await stream.CopyToAsync(ms);
+            S.Open(ms.ToArray(), file.Name);
+            _tab = Tabs.First();
+        }
+        catch (Exception ex) when (ex is IOException or GvasFormatException or InvalidDataException or ArgumentException)
+        {
+            S.Log($"Could not open {file.Name}: {ex.Message}. If it is a PS4 save, decrypt it first.");
+        }
+        StateHasChanged();
+    }
+
+    private async Task Download()
+    {
+        try
+        {
+            var bytes = S.Export();
+            await JS.InvokeVoidAsync("zxDownload", S.FileName, bytes);
+        }
+        catch (GvasFormatException ex)
+        {
+            S.Log($"Save failed: {ex.Message}");
+        }
+    }
+
+    private void Undo()
+    {
+        if (!S.Dirty) { S.Log("There are no changes to undo."); return; }
+        S.Ask("Throw away every change since the file was opened?", () => S.Undo());
+    }
+
+    public void Dispose() => S.Changed -= OnChanged;
+}

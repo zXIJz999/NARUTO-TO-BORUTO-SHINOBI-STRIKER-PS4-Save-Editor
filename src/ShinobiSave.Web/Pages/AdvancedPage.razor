@@ -1,0 +1,101 @@
+<div class="toolbar">
+    @foreach (var t in Tabs)
+    {
+        <button class="@(t == _tab ? "primary" : "")" @onclick="() => _tab = t">@t</button>
+    }
+</div>
+
+@switch (_tab)
+{
+    case "Everything in the file":
+        <p class="note">For people who know what they are doing: every field in the file. Edit the value boxes.</p>
+        <div class="tree">
+            <div class="node"><b>Name</b><b>Type</b><b>Value</b></div>
+            <TreeView Nodes="Roots" />
+        </div>
+        break;
+
+    case "Scrolls":
+    case "Game text values":
+        var map = S.Save!.Map(_tab == "Scrolls" ? "m_mapScrolls" : "m_gameStringDatas");
+        if (map == null || map.KeyType is not ("NameProperty" or "StrProperty"))
+        {
+            <p class="note">Not in this save.</p>
+        }
+        else
+        {
+            <div class="table-wrap">
+                <table>
+                    <thead><tr><th>Game ID</th><th>@(_tab == "Scrolls" ? "Amount" : "Text")</th></tr></thead>
+                    <tbody>
+                        @for (int i = 0; i < map.Entries.Count; i++)
+                        {
+                            int n = i;
+                            <tr>
+                                <td>@EditOps.Text(map.Entries[n].Key)</td>
+                                <td>
+                                    @if (map.ValueType == "IntProperty")
+                                    {
+                                        <input type="number" value="@map.Entries[n].Value" @onchange="e => { if (int.TryParse(e.Value?.ToString(), out var v) && EditOps.SetMapValue(map, n, v)) S.MarkDirty(); }" />
+                                    }
+                                    else
+                                    {
+                                        <input type="text" value="@EditOps.Text(map.Entries[n].Value)" @onchange="e => { if (EditOps.SetMapValue(map, n, e.Value?.ToString() ?? string.Empty)) S.MarkDirty(); }" />
+                                    }
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        }
+        break;
+
+    case "Matches":
+        var root = S.Save!.Root;
+        <div class="columns">
+            <div class="form">
+                <h2>Ranked match</h2>
+                @if (EditorState.Struct(root, "RankMatchData") is { } r) { <AutoFields StructName="@r.structName" Props="r.props" /> }
+                else { <p class="note">Not in this save.</p> }
+                <h2>Latest results</h2>
+                <AutoFields StructName="NN_GameData_ForSave" Props="root" Labels="LatestLabels" Exclude="@(new[] { "m_latestMatchGrade", "m_remakeTicketCount" })" />
+            </div>
+            <div class="form">
+                <h2>Event match</h2>
+                @if (EditorState.Struct(root, "EventMatchData") is { } ev) { <AutoFields StructName="@ev.structName" Props="ev.props" /> }
+                else { <p class="note">Not in this save.</p> }
+            </div>
+        </div>
+        break;
+
+    default:
+        <pre class="log">@string.Join("\n", S.LogLines)</pre>
+        break;
+}
+
+@code {
+    [CascadingParameter] public EditorState S { get; set; } = default!;
+    private string _tab = "Everything in the file";
+    private List<TreeNode>? _roots;
+    private GvasFile? _rootsFor;
+
+    private IEnumerable<string> Tabs => S.Save!.Kind == ShinobiSaveKind.Customize
+        ? new[] { "Everything in the file", "Scrolls", "Game text values", "Matches", "Activity log" }
+        : new[] { "Everything in the file", "Activity log" };
+
+    private List<TreeNode> Roots
+    {
+        get
+        {
+            if (_roots == null || !ReferenceEquals(_rootsFor, S.Save!.Gvas)) { _rootsFor = S.Save!.Gvas; _roots = TreeNode.Roots(_rootsFor); }
+            return _roots;
+        }
+    }
+
+    private static readonly Dictionary<string, string> LatestLabels = new()
+    {
+        ["m_latestNinjaRank"] = "Latest ninja rank", ["m_loadoutPage"] = "Selected loadout page", ["m_loadoutSlot"] = "Selected loadout slot",
+        ["m_selectPlayerSettings"] = "Selected loadout", ["m_compressedDataVersion"] = "Item box version",
+    };
+}

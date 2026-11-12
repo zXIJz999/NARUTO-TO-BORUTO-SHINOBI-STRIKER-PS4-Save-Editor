@@ -29,9 +29,12 @@ public sealed class ShinobiSaveFile
 
     private byte[]? _itemStreamAtLoad;
 
-    public static ShinobiSaveFile Load(string path)
+    public static ShinobiSaveFile Load(string path) => Load(File.ReadAllBytes(path), path);
+
+    /// <summary>Loads a save from memory; <paramref name="name"/> is kept as its path (used by the web editor).</summary>
+    public static ShinobiSaveFile Load(byte[] data, string name)
     {
-        var s = new ShinobiSaveFile { Path = path, Gvas = GvasFile.Load(path) };
+        var s = new ShinobiSaveFile { Path = name, Gvas = GvasFile.Load(data) };
         s.Kind = s.Gvas.SaveGameClass switch
         {
             "BP_SaveGame_C" => ShinobiSaveKind.Customize,
@@ -127,17 +130,28 @@ public sealed class ShinobiSaveFile
     }
 
     /// <summary>
-    /// Writes the save to <paramref name="path"/>. If the file exists it is first copied to a
-    /// timestamped .bak next to it. Returns the backup path, or null if none was made.
+    /// The bytes to write: equip counts brought in step with the loadouts, then serialised and
+    /// checked to read back identically. Throws when the check fails.
     /// </summary>
-    public string? Save(string path)
+    public byte[] Export()
     {
+        // Each item stores how many loadouts use it; keep that in step with the loadouts.
+        if (Items != null) RecountEquipped();
         var bytes = ToBytes();
         // Refuse to write something we cannot read back.
         var check = GvasFile.Load(bytes);
         if (!check.ToBytes().AsSpan().SequenceEqual(bytes))
             throw new GvasFormatException("Self-check failed: written data does not round-trip. Nothing was saved.");
+        return bytes;
+    }
 
+    /// <summary>
+    /// Writes the save to <paramref name="path"/>. If the file exists it is first copied to a
+    /// timestamped .bak next to it. Returns the backup path, or null if none was made.
+    /// </summary>
+    public string? Save(string path)
+    {
+        var bytes = Export();
         string? backup = null;
         if (File.Exists(path))
         {

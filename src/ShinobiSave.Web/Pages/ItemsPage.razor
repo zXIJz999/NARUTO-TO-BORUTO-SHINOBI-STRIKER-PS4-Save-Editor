@@ -1,0 +1,115 @@
+@if (Items == null)
+{
+    <p class="note">@(S.Save!.ItemBoxError != null ? $"The item box could not be read and is left untouched: {S.Save.ItemBoxError}" : "This save has no item box.")</p>
+}
+else
+{
+    <div class="toolbar">
+        <div class="grow"><Picker Choices="AllItems" Value="@_newItem" ValueChanged="v => _newItem = v" ShowInfo="true" NullText="Pick an item to add (type to search)" /></div>
+        <button @onclick="AddOne" disabled="@(_newItem == null)">Add item</button>
+        <select @bind="_kind">
+            <option value="-1">Everything</option>
+            @for (int k = 0; k < EditOps.ItemKinds.Length; k++)
+            {
+                <option value="@k">@(EditOps.ItemKinds[k].label)s</option>
+            }
+        </select>
+        <button @onclick="AddMissing">Add all I don't have</button>
+        <button @onclick="RemoveSelected" disabled="@(_selected.Count == 0)">Remove selected (@_selected.Count)</button>
+    </div>
+    <div class="toolbar">
+        <div class="grow"><input type="text" placeholder="Type here to search..." @bind="_query" @bind:event="oninput" /></div>
+        <label><input type="checkbox" @bind="_showEmpty" /> Show empty slots</label>
+        <span class="muted">@Items.Count(i => !i.IsEmpty) of @Items.Count slots used</span>
+    </div>
+    <div class="table-wrap">
+        <table>
+            <thead><tr><th></th><th>Slot</th><th>Item</th><th>Kind</th><th>Skill 1</th><th>Skill 2</th><th>Skill 3</th><th>Used by loadouts</th></tr></thead>
+            <tbody>
+                <Virtualize Items="Shown" ItemSize="45" Context="it" SpacerElement="tr">
+                    <tr @key="it.Index">
+                        <td><input type="checkbox" checked="@_selected.Contains(it.Index)" @onchange="e => Select(it.Index, e.Value is true)" /></td>
+                        <td class="muted">@it.Index</td>
+                        <td style="min-width:300px"><Picker Choices="ItemChoices" Value="@it.Id" ShowInfo="true" ValueChanged="v => { it.Id = v; S.MarkDirty(); }" /></td>
+                        <td style="min-width:130px"><Picker Choices="TypeChoices" Value="@it.Type" ValueChanged="v => { it.Type = v; S.MarkDirty(); }" /></td>
+                        <td style="min-width:190px"><Picker Choices="SkillChoices" Value="@it.Skill1" ValueChanged="v => { it.Skill1 = v; S.MarkDirty(); }" /></td>
+                        <td style="min-width:190px"><Picker Choices="SkillChoices" Value="@it.Skill2" ValueChanged="v => { it.Skill2 = v; S.MarkDirty(); }" /></td>
+                        <td style="min-width:190px"><Picker Choices="SkillChoices" Value="@it.Skill3" ValueChanged="v => { it.Skill3 = v; S.MarkDirty(); }" /></td>
+                        <td class="muted">@it.EquipCount</td>
+                    </tr>
+                </Virtualize>
+            </tbody>
+        </table>
+    </div>
+}
+
+@code {
+    [CascadingParameter] public EditorState S { get; set; } = default!;
+    private string? _newItem;
+    private int _kind = -1;
+    private string _query = "";
+    private bool _showEmpty;
+    private readonly HashSet<int> _selected = new();
+    private List<NameEntry>? _all, _itemChoices, _skillChoices, _typeChoices;
+
+    private List<InventoryItem>? Items => S.Save!.Items;
+    private List<NameEntry> AllItems => _all ??= EditOps.AllItems(S.Names);
+
+    // Drop-down contents: everything the game knows, plus whatever this save already holds.
+    private List<NameEntry> ItemChoices => _itemChoices ??= WithSaved(S.Names.Choices(AllItems, null, withNone: true), i => i.Id);
+    private List<NameEntry> SkillChoices => _skillChoices ??= WithSaved(S.Names.Choices(S.E("DT_SkillTable"), null, withNone: true), i => i.Skill1, i => i.Skill2, i => i.Skill3);
+    private List<NameEntry> TypeChoices => _typeChoices ??= WithSaved(EditOps.ItemKinds.Select(k => new NameEntry { Id = k.type, Name = k.label })
+        .Append(new NameEntry { Id = "Summon", Name = "Summon" }).Append(new NameEntry { Id = "None", Name = "Empty" }).ToList(), i => i.Type);
+
+    private List<NameEntry> WithSaved(List<NameEntry> choices, params Func<InventoryItem, string>[] fields)
+    {
+        var known = new HashSet<string>(choices.Select(c => c.Id), StringComparer.Ordinal);
+        foreach (var it in Items!)
+            foreach (var f in fields)
+            {
+                string v = f(it);
+                if (v.Length > 0 && known.Add(v)) choices.Add(S.Names.Entry(v));
+            }
+        return choices;
+    }
+
+    private List<InventoryItem> Shown => Items!.Where(i => (_showEmpty || !i.IsEmpty) &&
+        (_query.Length == 0 || S.Names.Display(i.Id).Contains(_query, StringComparison.OrdinalIgnoreCase) || i.Id.Contains(_query, StringComparison.OrdinalIgnoreCase))).ToList();
+
+    private void Select(int index, bool on) { if (on) _selected.Add(index); else _selected.Remove(index); }
+
+    private void AddOne()
+    {
+        if (_newItem == null) return;
+        if (!EditOps.PutItem(Items!, S.Names, _newItem)) { S.Log("The item box is full. Remove something first."); return; }
+        S.MarkDirty();
+        S.Log($"Added {S.Names.Display(_newItem)}.");
+    }
+
+    private void AddMissing()
+    {
+        var wanted = _kind < 0 ? AllItems : S.E(EditOps.ItemKinds[_kind].table);
+        var missing = EditOps.MissingItems(Items!, wanted);
+        if (missing.Count == 0) { S.Log("You already have all of those."); return; }
+        S.Ask($"Add {missing.Count} items to the item box?", () =>
+        {
+            int added = 0;
+            foreach (var e in missing) { if (!EditOps.PutItem(Items!, S.Names, e.Id)) break; added++; }
+            S.MarkDirty();
+            S.Log(added == missing.Count ? $"Added {added} items." : $"Added {added} of {missing.Count} items, then the item box was full.");
+        });
+    }
+
+    private void RemoveSelected()
+    {
+        var chosen = Items!.Where(i => _selected.Contains(i.Index) && !i.IsEmpty).ToList();
+        if (chosen.Count == 0) return;
+        S.Ask($"Remove {chosen.Count} item(s)? Loadouts wearing them will have nothing in that slot.", () =>
+        {
+            foreach (var it in chosen) it.Clear();
+            _selected.Clear();
+            S.MarkDirty();
+            S.Log($"Removed {chosen.Count} item(s).");
+        });
+    }
+}

@@ -1,0 +1,4 @@
+@inherits FieldBase
+@* An enum field (window mode, gender...), offered as the values the catalogue knows. *@
+<PickField Label="@Label" StructName="@StructName" Props="Props" Field="@Field"
+           Entries="@(S.Catalog.EnumValues(Slot.Def.Detail).Select(v => new NameEntry { Id = v, Name = GameNames.Prettify(v) }))" />

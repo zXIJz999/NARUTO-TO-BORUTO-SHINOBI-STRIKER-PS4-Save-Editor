@@ -1,0 +1,19 @@
+@inherits FieldBase
+<div class="row">
+    <label>@Label</label>
+    <input type="text" value="@EditOps.Text(Slot.Value)" maxlength="@(MaxLength > 0 ? MaxLength : 524288)" @onchange="Changed" />
+    <span class="trail">@if (PlayerName) { <span class="muted">max @EditOps.PlayerNameMax, no spaces</span> }</span>
+</div>
+
+@code {
+    [Parameter] public int MaxLength { get; set; }
+    /// <summary>Applies the game's player-name rules (no spaces, 15 characters).</summary>
+    [Parameter] public bool PlayerName { get; set; }
+
+    private void Changed(ChangeEventArgs e)
+    {
+        string text = e.Value?.ToString() ?? "";
+        if (PlayerName) text = EditOps.CleanPlayerName(text);
+        Set(text);
+    }
+}

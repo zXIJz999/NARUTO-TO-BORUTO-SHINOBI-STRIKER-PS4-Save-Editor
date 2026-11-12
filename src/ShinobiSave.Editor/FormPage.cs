@@ -100,42 +100,26 @@ internal sealed class FormPage : XtraScrollableControl
 
     // ---- editors bound to a save field ----------------------------------------------
 
-    /// <summary>Reads and writes one field of a struct, creating it in the save the first time it is set.</summary>
+    /// <summary>One field of a struct; the write rules live in Core (<see cref="FieldSlot"/>), shared with the web editor.</summary>
     private sealed class Slot
     {
         private readonly FormPage _page;
-        private readonly string? _structName;
-        private readonly List<GvasProperty> _props;
-        public readonly FieldDef Def;
-        private GvasProperty? _prop;
+        private readonly FieldSlot _field;
 
         public Slot(FormPage page, string? structName, List<GvasProperty> props, string field)
         {
             _page = page;
-            _structName = structName;
-            _props = props;
-            _prop = props.FirstOrDefault(p => p.Name == field);
-            Def = page._schema.Fields(structName).FirstOrDefault(f => f.Name == field)
-                  ?? new FieldDef { Name = field, Type = _prop?.Type ?? "NameProperty", Detail = _prop?.EnumName ?? _prop?.StructName ?? "" };
+            _field = new FieldSlot(page._schema, structName, props, field);
         }
 
-        public bool Stored => _prop != null;
-        public object? Value => _prop?.Value;
+        public FieldDef Def => _field.Def;
+        public bool Stored => _field.Stored;
+        public object? Value => _field.Value;
 
         public void Set(object? value)
         {
-            if (_page._loading || value == null) return;
-            if (_prop == null)
-            {
-                if (Def.Type == "StructProperty") return; // native structs can be edited but not created
-                _prop = SaveSchema.Create(Def);
-                _page._schema.InsertInOrder(_structName, _props, _prop);
-            }
-            // Leave text alone unless it really changed, so its original encoding survives.
-            else if (value is string s && s == Ui.Text(_prop.Value)) return;
-            else if (Equals(value, _prop.Value)) return;
-            _prop.Value = value;
-            _page._dirty();
+            if (_page._loading) return;
+            if (_field.Set(value)) _page._dirty();
         }
     }
 

@@ -1,0 +1,48 @@
+<div class="toolbar">
+    <label><input type="radio" name="which" checked="@(_which == "m_customInfo")" @onchange="@(() => _which = "m_customInfo")" /> Main character</label>
+    <label style="margin-left:18px"><input type="radio" name="which" checked="@(_which == "m_customInfoSub")" @onchange="@(() => _which = "m_customInfoSub")" /> Second character</label>
+    <span class="muted" style="margin-left:24px">Tip: click a box and type to search, for example "akatsuki".</span>
+</div>
+
+@if (EditorState.Struct(S.Save!.Root, _which) is not { } c)
+{
+    <div class="form"><h2>Not in this save</h2><p class="note">The game has not saved this character yet. Create it in the game first.</p></div>
+}
+else
+{
+    var (s, p) = c;
+    var colours = S.E("DT_PartsColors");
+    <div class="columns" @key="_which">
+        <div class="form">
+            <h2>Outfit and body</h2>
+            <PickField Label="Top" StructName="@s" Props="p" Field="IDPartsJacket" Entries="@S.E("DT_CustomJacket")" ShowInfo="true" />
+            <PickField Label="Bottom" StructName="@s" Props="p" Field="IDPartsPants" Entries="@S.E("DT_CustomPants")" ShowInfo="true" />
+            <PickField Label="Accessory" StructName="@s" Props="p" Field="IDPartsAccessories" Entries="@S.E("DT_CustomAccessories")" ShowInfo="true" />
+            <PickField Label="Hairstyle" StructName="@s" Props="p" Field="IDPartsHair" Entries="@S.E("DT_CustomHair")" />
+            <PickField Label="Face paint" StructName="@s" Props="p" Field="IDPartsFacePaint" Entries="@S.E("DT_CustomFacePaint")" />
+            <PickField Label="Headband" StructName="@s" Props="p" Field="IDPartsForehead" Entries="@S.E("DT_CustomForehead")" />
+            <PickField Label="Body type" StructName="@s" Props="p" Field="IDPartsScale" Entries="@S.E("DT_PartsScale")" />
+            <PickField Label="Voice" StructName="@s" Props="p" Field="IDVoiceInfo" Entries="@S.E("DT_VoiceInfo")" />
+            <ChoiceField Label="Gender" StructName="@s" Props="p" Field="Sex" />
+        </div>
+        <div class="form">
+            <h2>Face</h2>
+            <PickField Label="Eyes" StructName="@s" Props="p" Field="IDPartsEyes" Entries="@S.E("DT_CustomEye")" />
+            <PickField Label="Pupils" StructName="@s" Props="p" Field="IDPartsEyeBall" Entries="@S.E("DT_CustomEyeBall")" />
+            <PickField Label="Eyebrows" StructName="@s" Props="p" Field="IDPartsEyebrow" Entries="@S.E("DT_CustomEyebrows")" />
+            <PickField Label="Nose" StructName="@s" Props="p" Field="IDPartsNose" Entries="@S.E("DT_CustomNose")" />
+            <PickField Label="Mouth" StructName="@s" Props="p" Field="IDPartsMouth" Entries="@S.E("DT_CustomMouth")" />
+            <h2>Colours</h2>
+            <PickField Label="Skin colour" StructName="@s" Props="p" Field="IDPartsColorSkin" Entries="colours" Colour="true" />
+            <PickField Label="Hair colour" StructName="@s" Props="p" Field="IDPartsColorHair" Entries="colours" Colour="true" />
+            <PickField Label="Face paint colour" StructName="@s" Props="p" Field="IDPartsColorFacePaint" Entries="colours" Colour="true" />
+            <PickField Label="Headband colour" StructName="@s" Props="p" Field="IDPartsColorForehead" Entries="colours" Colour="true" />
+            <PickField Label="Eye colour" StructName="@s" Props="p" Field="IDPartsColorEyes" Entries="colours" Colour="true" />
+        </div>
+    </div>
+}
+
+@code {
+    [CascadingParameter] public EditorState S { get; set; } = default!;
+    private string _which = "m_customInfo";
+}

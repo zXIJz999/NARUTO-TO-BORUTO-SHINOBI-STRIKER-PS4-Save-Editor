@@ -1,0 +1,42 @@
+@inherits FieldBase
+@using System.Globalization
+@* Whole-number fields stored as 8-byte structs, uint/int64, IntPoint ("1920 x 1080"). *@
+<div class="row">
+    <label>@Label</label>
+    <input type="text" value="@Show(Slot.Value)" disabled="@(!Slot.Stored && Slot.Def.Type == "StructProperty")" @onchange="Changed" />
+    <span class="trail"></span>
+</div>
+
+@code {
+    private string Show(object? v) => v switch
+    {
+        GvasStruct { Native: { Length: 8 } n } when Slot.Def.Detail == "IntPoint" => $"{BitConverter.ToInt32(n, 0)} x {BitConverter.ToInt32(n, 4)}",
+        GvasStruct { Native: { Length: 8 } n } => BitConverter.ToInt64(n, 0).ToString(CultureInfo.InvariantCulture),
+        _ => EditOps.Text(v),
+    };
+
+    private void Changed(ChangeEventArgs e)
+    {
+        string text = (e.Value?.ToString() ?? "").Trim();
+        var def = Slot.Def;
+        switch (def.Type)
+        {
+            case "UInt32Property": if (uint.TryParse(text, out var u)) Set(u); break;
+            case "Int64Property": if (long.TryParse(text, out var l)) Set(l); break;
+            case "StructProperty" when def.Detail == "IntPoint":
+                var parts = text.Split(new[] { 'x', 'X', ',', ' ' }, StringSplitOptions.RemoveEmptyEntries);
+                if (parts.Length == 2 && int.TryParse(parts[0], out int w) && int.TryParse(parts[1], out int h))
+                {
+                    var bytes = new byte[8];
+                    BitConverter.TryWriteBytes(bytes.AsSpan(0), w);
+                    BitConverter.TryWriteBytes(bytes.AsSpan(4), h);
+                    Set(new GvasStruct { StructName = "IntPoint", Native = bytes });
+                }
+                break;
+            case "StructProperty":
+                if (long.TryParse(text, out var n)) Set(new GvasStruct { StructName = def.Detail, Native = BitConverter.GetBytes(n) });
+                break;
+            default: Set(text); break;
+        }
+    }
+}

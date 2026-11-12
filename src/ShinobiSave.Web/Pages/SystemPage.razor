@@ -1,0 +1,35 @@
+@{ var root = S.Save!.Root; }
+<div class="columns">
+    <div class="form">
+        <h2>Screen</h2>
+        @if (EditorState.Struct(root, "DisplaySettings") is { } display)
+        {
+            @if (EditorState.Struct(display.props, "ScreenSettings") is { } ss) { <AutoFields StructName="@ss.structName" Props="ss.props" Labels="Labels" /> }
+            <AutoFields StructName="@display.structName" Props="display.props" Labels="Labels" />
+        }
+        else { <p class="note">The game has not saved any screen settings yet.</p> }
+    </div>
+    <div class="form">
+        <h2>Sound</h2>
+        @if (EditorState.Struct(root, "SoundSettings") is { } sound) { <AutoFields StructName="@sound.structName" Props="sound.props" Labels="Labels" /> }
+        else { <p class="note">The game has not saved any sound settings yet.</p> }
+        <h2>General</h2>
+        <AutoFields StructName="NN_GameSystemData_ForSave" Props="root" Labels="Labels" />
+    </div>
+</div>
+
+@code {
+    [CascadingParameter] public EditorState S { get; set; } = default!;
+
+    private static readonly Dictionary<string, string> Labels = new(StringComparer.Ordinal)
+    {
+        ["m_brightness"] = "Brightness", ["m_windowMode"] = "Window mode", ["m_resolution"] = "Resolution",
+        ["m_antiAlias"] = "Anti-aliasing", ["m_renderQuality"] = "Render quality", ["m_shadowQuality"] = "Shadow quality",
+        ["m_vsync"] = "V-Sync", ["m_bloom"] = "Bloom", ["m_screenPercentage"] = "Resolution scale (%)",
+        ["m_displayButtonInstractions"] = "Show button hints", ["PlayerDisplayName"] = "Player name display",
+        ["VolumeBgm"] = "Music volume", ["VolumeSE"] = "Sound effects volume", ["VolumeVoice"] = "Voice volume",
+        ["VolumeVoiceChat"] = "Voice chat volume", ["VoiceLanguage"] = "Voice language",
+        ["bInitialized"] = "First-time setup done", ["LicenseAgreementsVersion"] = "Licence version accepted",
+        ["PrivacyPolicyAgreementsVersion"] = "Privacy version accepted",
+    };
+}

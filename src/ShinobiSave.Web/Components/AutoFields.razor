@@ -1,0 +1,52 @@
+@* A row for every simple field of a struct, labels tidied from the field names (same as the desktop editor). *@
+@foreach (var def in Fields())
+{
+    var label = Labels != null && Labels.TryGetValue(def.Name, out var l) ? l : GameNames.Prettify(def.Name);
+    switch (def.Type)
+    {
+        case "IntProperty":
+        case "ByteProperty" when def.Detail is "" or "None":
+            <NumberField Label="@label" StructName="@StructName" Props="Props" Field="@def.Name" />
+            break;
+        case "FloatProperty":
+            <NumberField Label="@label" StructName="@StructName" Props="Props" Field="@def.Name" Decimal="true" />
+            break;
+        case "BoolProperty":
+            <ToggleField Label="@label" StructName="@StructName" Props="Props" Field="@def.Name" />
+            break;
+        case "StrProperty":
+            <TextField Label="@label" StructName="@StructName" Props="Props" Field="@def.Name" />
+            break;
+        case "EnumProperty":
+        case "ByteProperty":
+            <ChoiceField Label="@label" StructName="@StructName" Props="Props" Field="@def.Name" />
+            break;
+        case "NameProperty":
+            var current = EditOps.Text(Props.FirstOrDefault(p => p.Name == def.Name)?.Value);
+            <PickField Label="@label" StructName="@StructName" Props="Props" Field="@def.Name"
+                       Entries="@(S.Catalog.Like(current).Select(S.Names.Entry).ToList())" WithNone="true" />
+            break;
+        case "UInt32Property":
+        case "Int64Property":
+        case "StructProperty" when def.Detail is "NN_Int64" or "NN_ServerCharacterID" or "IntPoint":
+            <RawField Label="@label" StructName="@StructName" Props="Props" Field="@def.Name" />
+            break;
+    }
+}
+
+@code {
+    [CascadingParameter] public EditorState S { get; set; } = default!;
+    [Parameter] public string? StructName { get; set; }
+    [Parameter] public List<GvasProperty> Props { get; set; } = default!;
+    [Parameter] public IReadOnlyDictionary<string, string>? Labels { get; set; }
+    [Parameter] public string[] Exclude { get; set; } = Array.Empty<string>();
+
+    private IEnumerable<FieldDef> Fields()
+    {
+        var fields = S.Schema.Fields(StructName).ToList();
+        foreach (var p in Props)
+            if (fields.All(f => f.Name != p.Name))
+                fields.Add(new FieldDef { Name = p.Name, Type = p.Type, Detail = p.EnumName ?? p.StructName ?? "" });
+        return fields.Where(f => !Exclude.Contains(f.Name));
+    }
+}

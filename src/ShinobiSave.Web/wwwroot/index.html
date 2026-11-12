@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Shinobi Striker Save Editor - Made by zXIJz</title>
+    <meta name="description" content="Free save editor for decrypted PS4 saves of NARUTO TO BORUTO: SHINOBI STRIKER. Runs in your browser; your save never leaves your PC." />
+    <base href="/" />
+    <link rel="icon" type="image/png" href="icon-192.png" />
+    <link rel="stylesheet" href="css/app.css" />
+</head>
+
+<body>
+    <div id="app">
+        <div class="boot">
+            <div class="boot-title">Shinobi Striker Save Editor</div>
+            <div class="boot-credit">Made by zXIJz</div>
+            <div class="boot-note">Loading the editor... (the first visit takes a few seconds)</div>
+        </div>
+    </div>
+
+    <div id="blazor-error-ui">
+        Something went wrong. <a href="" class="reload">Reload the page</a>
+        <a class="dismiss">x</a>
+    </div>
+    <script>
+        // Hands the edited save to the browser as a download. Nothing is uploaded anywhere.
+        window.zxDownload = function (name, bytes) {
+            const blob = new Blob([bytes], { type: "application/octet-stream" });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement("a");
+            a.href = url;
+            a.download = name;
+            document.body.appendChild(a);
+            a.click();
+            a.remove();
+            setTimeout(() => URL.revokeObjectURL(url), 10000);
+        };
+        // Warn before leaving the page with unsaved changes.
+        window.zxDirty = false;
+        window.addEventListener("beforeunload", e => { if (window.zxDirty) { e.preventDefault(); e.returnValue = ""; } });
+        window.zxSetDirty = d => { window.zxDirty = d; };
+    </script>
+    <script src="_framework/blazor.webassembly.js"></script>
+</body>
+
+</html>

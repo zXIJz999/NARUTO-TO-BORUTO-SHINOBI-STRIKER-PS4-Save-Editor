@@ -30,6 +30,16 @@ The PC save uses the same format and the editor opens it, but in my tests the PC
 character on its servers and ignored the local file, so changes did not show in game. If you
 find a way to make it work, the source is here: go for it.
 
+## Use it in your browser (no download)
+
+Open the **web editor** on this repository's GitHub Pages site: `https://<owner>.github.io/<repo>/`
+(the link is in the repository's About box). It does everything the exe does and works on any
+computer with a modern browser.
+
+It runs entirely on your own PC: your save is **never uploaded**. **Save (download)** gives
+you the edited file with the same name; your original file is not changed, so it is your
+backup.
+
 ## Download
 
 Get `ShinobiStrikerSaveEditor.exe` from the [Releases](../../releases) page. It is one file.
@@ -134,6 +144,17 @@ subfolder with a fresh, unplayed `Customize_v002.sav`. Saves are not in the repo
 | `ShinobiSave.Editor` | The editor |
 | `ShinobiSave.Dump` | Console tool: dump a save as text, and rebuild `ids.txt`, `schema.txt` and `names.tsv` from your own copy of the game |
 | `ShinobiSave.Tests` | Console test runner |
+| `ShinobiSave.Web` | The browser version (Blazor WebAssembly, no DevExpress needed). Published to GitHub Pages by `.github/workflows/pages.yml` |
+
+Every rule that decides the bytes written (field creation, item adding, equip counts, the
+round-trip self-check) is in `ShinobiSave.Core` (`EditOps`, `FieldSlot`,
+`ShinobiSaveFile.Export`), so the exe and the web page produce the same save. The only
+difference: the browser's zlib packs the item box slightly differently. The unpacked content is
+identical, and the game reads either.
+
+To run the web editor locally: `dotnet run --project src\ShinobiSave.Web`. To publish it,
+enable **Settings > Pages > Source: GitHub Actions** in the repository; every push to `main`
+then updates the site.
 
 The save format is written up in [docs/SAVE_FORMAT.md](docs/SAVE_FORMAT.md): plain Unreal
 Engine 4.16 GVAS with no encryption or checksum, and the item box stored as zlib blocks.

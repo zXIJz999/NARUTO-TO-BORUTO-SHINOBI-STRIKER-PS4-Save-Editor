@@ -1,0 +1,6 @@
+@inherits FieldBase
+<div class="row">
+    <label>@Label</label>
+    <span><input type="checkbox" checked="@(Slot.Value is true)" @onchange="e => Set(e.Value is true)" /> <span class="muted">@(Slot.Value is true ? "Yes" : "No")</span></span>
+    <span class="trail"></span>
+</div>

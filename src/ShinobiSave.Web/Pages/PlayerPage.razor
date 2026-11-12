@@ -1,0 +1,70 @@
+@using System.Globalization
+<div class="columns">
+    <div class="form">
+        <h2>Profile</h2>
+        @if (EditorState.Struct(Root, "m_playerBaseData") is { } b)
+        {
+            <TextField Label="Player name" StructName="@b.structName" Props="b.props" Field="m_playerName" MaxLength="EditOps.PlayerNameMax" PlayerName="true" />
+            <NumberField Label="Level" StructName="@b.structName" Props="b.props" Field="m_playerRank" Min="0" Max="9999" />
+            <PickField Label="Village" StructName="@b.structName" Props="b.props" Field="m_IDCountry" Entries="@S.E("DT_CountryInfo")" />
+            <PickField Label="Title" StructName="@b.structName" Props="b.props" Field="m_IDNickname" Entries="@S.E("DT_Nickname")" WithNone="true" />
+            <PickField Label="Master" StructName="@b.structName" Props="b.props" Field="m_IDMaster" Entries="@S.E("DT_MasterData", "DT_DlcMasterAnnouncement")" WithNone="true" />
+            <PickField Label="Ninja rank" StructName="@b.structName" Props="b.props" Field="m_IDShinobiRank" Entries="@S.E("DT_ShinobiRank")" />
+            <ChoiceField Label="Gender" StructName="@b.structName" Props="b.props" Field="m_sex" />
+        }
+        else
+        {
+            <p class="note">This save has no profile yet. Play the game once first.</p>
+        }
+        <h2>Ranked and extras</h2>
+        <PickField Label="Ranked grade" StructName="NN_GameData_ForSave" Props="Root" Field="m_latestMatchGrade" Entries="@S.E("DT_MatchGrade")" WithNone="true" />
+        <NumberField Label="Character remake tickets" StructName="NN_GameData_ForSave" Props="Root" Field="m_remakeTicketCount" Min="0" Max="9999" />
+    </div>
+
+    <div class="form">
+        <h2>Money and points</h2>
+        @if (Counters == null)
+        {
+            <p class="note">This save has no counters.</p>
+        }
+        else
+        {
+            @foreach (var key in CommonCounters)
+            {
+                int i = IndexOf(key);
+                if (i < 0) continue;
+                int value = Counters.Entries[i].Value is int v ? v : 0;
+                var range = S.Names.CounterRange(key);
+                int max = Math.Max(value, range?.max ?? int.MaxValue);
+                int min = Math.Min(value, 0);
+                <div class="row">
+                    <label>@S.Names.Counter(key).label</label>
+                    <input type="number" min="@min" max="@max" value="@value" @onchange="e => SetCounter(i, e.Value, min, max)" />
+                    <span class="trail"><button @onclick="() => SetCounter(i, max, min, max)">Max</button></span>
+                </div>
+            }
+            <p class="note">"Max" sets the highest amount the game allows. Master progress, wins and the rest are on the Stats page.</p>
+        }
+    </div>
+</div>
+
+@code {
+    [CascadingParameter] public EditorState S { get; set; } = default!;
+
+    private static readonly string[] CommonCounters =
+    {
+        "ID_Counter_Money", "ID_Counter_SkillPoint", "ID_Counter_MasterPoint", "ID_Counter_PlayerExperience",
+        "ID_Counter_PlayerExperienceAccumulation", "ID_Counter_TotalMoney", "ID_Counter_PlayTimeMinute",
+    };
+
+    private List<GvasProperty> Root => S.Save!.Root;
+    private GvasMap? Counters => S.Save!.Map("m_gameCounters");
+
+    private int IndexOf(string key) => Counters!.Entries.FindIndex(e => EditOps.Text(e.Key) == key);
+
+    private void SetCounter(int index, object? raw, int min, int max)
+    {
+        if (!long.TryParse(Convert.ToString(raw, CultureInfo.InvariantCulture), out var n)) return;
+        if (EditOps.SetMapValue(Counters!, index, (int)Math.Clamp(n, min, max))) S.MarkDirty();
+    }
+}

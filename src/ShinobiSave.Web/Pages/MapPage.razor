@@ -1,0 +1,120 @@
+@* Unlocks (m_gameFlags) and Stats (m_gameCounters): one row per entry, grouped, searchable. *@
+@if (Map == null || !Supported)
+{
+    <p class="note">Not in this save.</p>
+}
+else
+{
+    <div class="toolbar">
+        <span>Show</span>
+        <select @bind="_group">
+            <option value="">Everything</option>
+            @foreach (var g in Groups) { <option value="@g">@g</option> }
+            @if (Rows.Any(r => r.Group == Reserved)) { <option value="@Reserved">@Reserved</option> }
+        </select>
+        @if (OnOff)
+        {
+            <button @onclick="SwitchOn">Switch ON all shown</button>
+            <button @onclick="SwitchOff">Switch OFF all shown</button>
+        }
+        <div class="grow"><input type="text" placeholder="Type here to search..." @bind="_query" @bind:event="oninput" /></div>
+        <label><input type="checkbox" @bind="_ids" /> Show game IDs</label>
+    </div>
+    <p class="note">@Note Use the search box to find something by name.</p>
+    <div class="table-wrap">
+        <table>
+            <thead><tr><th>Group</th><th>Name</th>@if (OnOff) {<th>What it records</th>}<th>@ValueCaption</th>@if (_ids) {<th>Game ID</th>}</tr></thead>
+            <tbody>
+                <Virtualize Items="Shown" ItemSize="37" Context="r" SpacerElement="tr">
+                    <tr @key="r.Index">
+                        <td class="muted">@r.Group</td>
+                        <td>@r.Name</td>
+                        @if (OnOff) {<td class="muted">@r.What</td>}
+                        <td class="num">
+                            @if (OnOff)
+                            {
+                                <input type="checkbox" checked="@(Map.Entries[r.Index].Value is true)" @onchange="e => SetOne(r.Index, e.Value is true)" />
+                            }
+                            else
+                            {
+                                <input type="number" value="@(Map.Entries[r.Index].Value)" @onchange="e => SetNumber(r.Index, e.Value)" />
+                            }
+                        </td>
+                        @if (_ids) {<td class="muted">@r.Key</td>}
+                    </tr>
+                </Virtualize>
+            </tbody>
+        </table>
+    </div>
+}
+
+@code {
+    [CascadingParameter] public EditorState S { get; set; } = default!;
+    [Parameter] public string MapName { get; set; } = "";
+    [Parameter] public bool OnOff { get; set; }
+    [Parameter] public string ValueCaption { get; set; } = "Value";
+    [Parameter] public string Note { get; set; } = "";
+
+    private const string Reserved = "Reserved (unused)";
+    private string _group = "";
+    private string _query = "";
+    private bool _ids;
+    private List<RowInfo>? _rows;
+    private GvasMap? _builtFor;
+
+    private sealed record RowInfo(int Index, string Key, string Group, string Name, string What);
+
+    private GvasMap? Map => S.Save!.Map(MapName);
+    private bool Supported => Map!.KeyType is "NameProperty" or "StrProperty" && Map.ValueType is "IntProperty" or "BoolProperty";
+
+    private List<RowInfo> Rows
+    {
+        get
+        {
+            if (_rows == null || !ReferenceEquals(_builtFor, Map))
+            {
+                _builtFor = Map;
+                _rows = Map!.Entries.Select((e, i) =>
+                {
+                    string key = EditOps.Text(e.Key);
+                    if (OnOff) { var f = S.Names.Flag(key); return new RowInfo(i, key, f.group, f.label, f.what); }
+                    var c = S.Names.Counter(key);
+                    return new RowInfo(i, key, c.group, c.label, "");
+                }).OrderBy(r => r.Group, StringComparer.OrdinalIgnoreCase).ToList();
+            }
+            return _rows;
+        }
+    }
+
+    private List<string> Groups => Rows.Select(r => r.Group).Distinct().Where(g => g != Reserved).OrderBy(g => g, StringComparer.OrdinalIgnoreCase).ToList();
+
+    private List<RowInfo> Shown => Rows.Where(r =>
+        (_group.Length == 0 ? r.Group != Reserved : r.Group == _group) &&
+        (_query.Length == 0 || r.Name.Contains(_query, StringComparison.OrdinalIgnoreCase) || r.Key.Contains(_query, StringComparison.OrdinalIgnoreCase)
+         || r.Group.Contains(_query, StringComparison.OrdinalIgnoreCase))).ToList();
+
+    private void SetOne(int index, object value)
+    {
+        if (EditOps.SetMapValue(Map!, index, value)) S.MarkDirty();
+    }
+
+    private void SetNumber(int index, object? raw)
+    {
+        if (int.TryParse(raw?.ToString(), out var n)) SetOne(index, n);
+    }
+
+    private void SwitchOn() => SetShown(true, "Switch ON");
+    private void SwitchOff() => SetShown(false, "Switch OFF");
+
+    private void SetShown(bool value, string words)
+    {
+        var rows = Shown;
+        if (rows.Count == 0) return;
+        S.Ask($"{words} all {rows.Count} rows in the list right now?", () =>
+        {
+            int changed = rows.Count(r => EditOps.SetMapValue(Map!, r.Index, value));
+            if (changed > 0) S.MarkDirty();
+            S.Log($"{words}: {rows.Count} rows.");
+        });
+    }
+}

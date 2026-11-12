@@ -1,0 +1,100 @@
+@if (Loadouts.Count == 0)
+{
+    <p class="note">This save has no loadouts yet. Play the game once first.</p>
+}
+else
+{
+    <div class="split">
+        <div class="list-box">
+            @for (int i = 0; i < Loadouts.Count; i++)
+            {
+                int n = i;
+                <div class="@(n == _selected ? "active" : "")" @onclick="() => _selected = n">Loadout @(n + 1) &nbsp;-&nbsp; @RoleName(n)</div>
+            }
+        </div>
+        <div class="columns" @key="_selected">
+            @{ var p = Loadouts[_selected].Properties!; }
+            <div class="form">
+                <h2>Loadout @(_selected + 1) (page @(_selected / 4 + 1), slot @(_selected % 4 + 1))</h2>
+                <PickField Label="Role" StructName="@StructName" Props="p" Field="IDNameRole" Entries="RoleChoices" />
+                <PickField Label="Weapon" StructName="@StructName" Props="p" Field="IDNameWeapon" Entries="@S.E("DT_WeaponData")" ShowInfo="true" />
+                <PickField Label="Ninja tool" StructName="@StructName" Props="p" Field="IDNameSubWeapon" Entries="@S.E("DT_NinjaWeaponData")" ShowInfo="true" />
+                <PickField Label="Ninjutsu 1" StructName="@StructName" Props="p" Field="IDNameJutsu_0" Entries="@JutsuFirst("Normal")" ShowInfo="true" />
+                <PickField Label="Ninjutsu 2" StructName="@StructName" Props="p" Field="IDNameJutsu_1" Entries="@JutsuFirst("Normal")" ShowInfo="true" />
+                <PickField Label="Secret technique" StructName="@StructName" Props="p" Field="IDNameJutsu_2" Entries="@JutsuFirst("FinishMove")" ShowInfo="true" />
+                <PickField Label="Substitution" StructName="@StructName" Props="p" Field="IDNameKawarimi" Entries="@JutsuFirst("Kawarimi")" ShowInfo="true" />
+                <PickField Label="Summon" StructName="@StructName" Props="p" Field="IDNameSummon" Entries="@JutsuFirst("Summon")" WithNone="true" ShowInfo="true" />
+            </div>
+            <div class="form">
+                <h2>Worn items (from your Items page)</h2>
+                @foreach (var (field, label, prefix) in Gear)
+                {
+                    var slot = S.Slot(StructName, p, field);
+                    int? current = slot.Value as int?;
+                    <div class="row">
+                        <label>@label</label>
+                        <Picker Choices="SlotChoices(prefix, current)" Value="@current?.ToString()" ShowInfo="true"
+                                ValueChanged="v => { if (int.TryParse(v, out var n)) S.Set(slot, n); }" />
+                        <span class="trail"></span>
+                    </div>
+                }
+                <p class="note">These lists show the items you own. Add more on the Items page, then come back here.</p>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    [CascadingParameter] public EditorState S { get; set; } = default!;
+    private int _selected;
+
+    private static readonly (string field, string label, string prefix)[] Gear =
+    {
+        ("JacketItemIndex", "Top", "ID_CustomJacket_"), ("PantsItemIndex", "Bottom", "ID_CustomPants_"),
+        ("AccessoryItemIndex", "Accessory", "ID_CustomAccessory_"), ("WeaponItemIndex", "Weapon", "ID_Weapon_"),
+        ("SubWeaponItemIndex", "Ninja tool", "ID_CustomParts_"),
+    };
+
+    private List<GvasStruct> Loadouts => S.Save!.Loadouts.Where(l => l.Properties != null).ToList();
+    private string StructName => (S.Save!.Prop("m_playerSettings")?.Value as GvasArray)?.InnerTag?.StructName ?? "NN_GameData_EfficencySetting";
+
+    private string RoleName(int i)
+    {
+        string role = EditOps.Text(Loadouts[i].Properties!.FirstOrDefault(p => p.Name == "IDNameRole")?.Value);
+        return role.Length == 0 ? "not set" : S.Names.Display(role);
+    }
+
+    private List<NameEntry> RoleChoices
+    {
+        get
+        {
+            var roles = S.E("DT_RoleData");
+            var main = new[] { "ID_Role_Attack", "ID_Role_Shoot", "ID_Role_Defend", "ID_Role_Heal" };
+            return roles.Where(r => main.Contains(r.Id)).Concat(roles.Where(r => !main.Contains(r.Id))).ToList();
+        }
+    }
+
+    // Jutsu lists start with the kind that belongs in the slot; the rest follow.
+    private List<NameEntry> JutsuFirst(string category)
+    {
+        string[] order = { category, "Normal", "FinishMove", "Kawarimi", "Summon" };
+        string Word(string c) => c switch { "Normal" => "Ninjutsu", "FinishMove" => "Secret technique", "Kawarimi" => "Substitution", _ => "Summon" };
+        return order.Distinct().SelectMany(c => S.Names.Jutsu(c).Select(e => new NameEntry { Id = e.Id, Name = e.Name, Info = Word(c) })).ToList();
+    }
+
+    private List<NameEntry> SlotChoices(string prefix, int? current)
+    {
+        var list = new List<NameEntry> { new() { Id = "-1", Name = "Nothing equipped" } };
+        var items = S.Save!.Items;
+        if (items != null)
+            list.AddRange(items.Where(i => !i.IsEmpty && i.Id.StartsWith(prefix, StringComparison.Ordinal))
+                .Select(i => new NameEntry { Id = i.Index.ToString(), Name = S.Names.Display(i.Id), Info = $"Slot {i.Index}" })
+                .OrderBy(e => e.Name, StringComparer.OrdinalIgnoreCase));
+        if (current is { } slot && list.All(e => e.Id != slot.ToString()))
+        {
+            var item = items?.FirstOrDefault(i => i.Index == slot);
+            list.Add(new NameEntry { Id = slot.ToString(), Name = item == null || item.IsEmpty ? $"Empty slot {slot}" : S.Names.Display(item.Id), Info = $"Slot {slot}" });
+        }
+        return list;
+    }
+}

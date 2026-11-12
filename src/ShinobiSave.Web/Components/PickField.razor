@@ -1,0 +1,28 @@
+@inherits FieldBase
+@* A named drop-down bound to a NameProperty field (items, jutsu, colours...). *@
+<div class="row">
+    <label>@Label</label>
+    <Picker Choices="ChoiceList" Value="@(Slot.Stored ? EditOps.Text(Slot.Value) : null)" ValueChanged="v => Set(v)"
+            ShowInfo="@(ShowInfo || Colour)" Sortable="@(ShowInfo && ChoiceList.Any(c => c.Rank < 5))" />
+    <span class="trail">
+        @if (Colour)
+        {
+            <span class="swatch" style="background:@(ColourOf(EditOps.Text(Slot.Value)) ?? "transparent")"></span>
+        }
+    </span>
+</div>
+
+@code {
+    [Parameter] public IEnumerable<NameEntry> Entries { get; set; } = Array.Empty<NameEntry>();
+    [Parameter] public bool WithNone { get; set; }
+    [Parameter] public bool ShowInfo { get; set; }
+    [Parameter] public bool Colour { get; set; }
+
+    private List<NameEntry> ChoiceList => S.Names.Choices(Entries, EditOps.Text(Slot.Value), WithNone);
+
+    private string? ColourOf(string id)
+    {
+        var hex = S.Names.Info(id)?["color"];
+        return hex is { Length: > 0 } ? (hex.StartsWith('#') ? hex : "#" + hex) : null;
+    }
+}
