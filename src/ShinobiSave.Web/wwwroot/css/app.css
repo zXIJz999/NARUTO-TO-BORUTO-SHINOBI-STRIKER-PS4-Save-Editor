@@ -78,7 +78,8 @@ input[type=checkbox] { width: 17px; height: 17px; accent-color: var(--accent); }
 .picker .value { width: 100%; text-align: left; justify-content: space-between; background: var(--bg); min-height: 32px; padding: 6px 9px; }
 .picker .value .info { color: var(--dim); font-size: 12px; }
 .picker .pop { position: absolute; z-index: 20; top: calc(100% + 2px); left: 0; width: max(100%, 520px); max-width: 90vw; background: var(--panel); border: 1px solid var(--accent); border-radius: var(--radius); box-shadow: 0 8px 24px #0008; }
-.picker .pop .search { display: flex; gap: 6px; padding: 8px; border-bottom: 1px solid var(--line); }
+.picker .pop .search { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; padding: 8px; border-bottom: 1px solid var(--line); }
+.picker .pop .search input[type=text] { flex: 1; min-width: 180px; width: auto; }
 .picker .pop .search select { width: auto; }
 .picker .list { max-height: 380px; overflow-y: auto; }
 .picker .opt { display: flex; justify-content: space-between; gap: 12px; padding: 7px 10px; cursor: pointer; }

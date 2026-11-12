@@ -633,6 +633,27 @@ internal sealed class MainForm : XtraForm
         kind.Properties.Items.Add(DlcChoice);
         kind.SelectedIndex = 0;
 
+        // Filters for the "Pick an item to add" list: rank and DLC (tagged in GameNames.IsDlc).
+        var rankFilter = new ComboBoxEdit { Location = new Point(470, 60), Size = new Size(130, 32) };
+        rankFilter.Properties.TextEditStyle = TextEditStyles.DisableTextEditor;
+        rankFilter.Properties.Items.AddRange(new object[] { "Any rank", "Rank SS", "Rank S", "Rank A", "Rank B", "Rank C" });
+        rankFilter.SelectedIndex = 0;
+        var dlcOnly = new CheckEdit { Text = "DLC only", Location = new Point(612, 64), Width = 110 };
+        void FilterAddList()
+        {
+            int rank = rankFilter.SelectedIndex - 1;
+            newItem.Properties.DataSource = allItems
+                .Where(e => rank < 0 || e.Rank == rank)
+                .Where(e => !dlcOnly.Checked || _names.IsDlc(e.Id))
+                .ToList();
+            newItem.EditValue = null;
+        }
+        rankFilter.SelectedIndexChanged += (_, _) => FilterAddList();
+        dlcOnly.CheckedChanged += (_, _) => FilterAddList();
+        bar.Controls.Add(Ui.Label("Item list:", 400, 67));
+        bar.Controls.Add(rankFilter);
+        bar.Controls.Add(dlcOnly);
+
         var showEmpty = new CheckEdit { Text = "Show empty slots", Location = new Point(Ui.Pad, 64), Width = 180 };
         var count = Ui.Label("", 230, 67);
         void ShowCount() => count.Text = $"{items.Count(i => !i.IsEmpty)} of {items.Count} slots used";

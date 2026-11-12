@@ -5,7 +5,7 @@
 else
 {
     <div class="toolbar">
-        <div class="grow"><Picker Choices="AllItems" Value="@_newItem" ValueChanged="v => _newItem = v" ShowInfo="true" NullText="Pick an item to add (type to search)" /></div>
+        <div class="grow"><Picker Choices="AllItems" Value="@_newItem" ValueChanged="v => _newItem = v" ShowInfo="true" Sortable="true" Filters="true" NullText="Pick an item to add (type to search)" /></div>
         <button @onclick="AddOne" disabled="@(_newItem == null)">Add item</button>
         <select @bind="_kind">
             <option value="-1">Everything</option>
@@ -31,7 +31,7 @@ else
                     <tr @key="it.Index">
                         <td><input type="checkbox" checked="@_selected.Contains(it.Index)" @onchange="e => Select(it.Index, e.Value is true)" /></td>
                         <td class="muted">@it.Index</td>
-                        <td style="min-width:300px"><Picker Choices="ItemChoices" Value="@it.Id" ShowInfo="true" ValueChanged="v => { it.Id = v; S.MarkDirty(); }" /></td>
+                        <td style="min-width:300px"><Picker Choices="ItemChoices" Value="@it.Id" ShowInfo="true" Sortable="true" Filters="true" ValueChanged="v => { it.Id = v; S.MarkDirty(); }" /></td>
                         <td style="min-width:130px"><Picker Choices="TypeChoices" Value="@it.Type" ValueChanged="v => { it.Type = v; S.MarkDirty(); }" /></td>
                         <td style="min-width:190px"><Picker Choices="SkillChoices" Value="@it.Skill1" ValueChanged="v => { it.Skill1 = v; S.MarkDirty(); }" /></td>
                         <td style="min-width:190px"><Picker Choices="SkillChoices" Value="@it.Skill2" ValueChanged="v => { it.Skill2 = v; S.MarkDirty(); }" /></td>

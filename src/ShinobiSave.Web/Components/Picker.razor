@@ -10,6 +10,18 @@
         <div class="pop">
             <div class="search">
                 <input type="text" placeholder="Type to search..." @bind="_query" @bind:event="oninput" @ref="_search" />
+                @if (Filters)
+                {
+                    <select @bind="_rank" title="Rank">
+                        <option value="-1">Any rank</option>
+                        <option value="0">SS</option>
+                        <option value="1">S</option>
+                        <option value="2">A</option>
+                        <option value="3">B</option>
+                        <option value="4">C</option>
+                    </select>
+                    <label style="white-space:nowrap"><input type="checkbox" @bind="_dlcOnly" /> DLC only</label>
+                }
                 @if (Sortable)
                 {
                     <select @bind="_sort">
@@ -39,6 +51,11 @@
     [Parameter] public bool ShowInfo { get; set; }
     [Parameter] public bool Sortable { get; set; }
     [Parameter] public string NullText { get; set; } = "(game default)";
+    /// <summary>Shows the rank and "DLC only" filters (item lists).</summary>
+    [Parameter] public bool Filters { get; set; }
+
+    private int _rank = -1;
+    private bool _dlcOnly;
 
     private bool _open;
     private string _query = "";
@@ -55,6 +72,8 @@
         get
         {
             IEnumerable<NameEntry> list = Choices;
+            if (_rank >= 0) list = list.Where(c => c.Rank == _rank);
+            if (_dlcOnly) list = list.Where(c => c.Info.EndsWith("DLC", StringComparison.Ordinal));
             if (_query.Length > 0)
                 list = list.Where(c => c.Name.Contains(_query, StringComparison.OrdinalIgnoreCase) || c.Id.Contains(_query, StringComparison.OrdinalIgnoreCase));
             return _sort switch

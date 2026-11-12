@@ -3,7 +3,8 @@
 <div class="row">
     <label>@Label</label>
     <Picker Choices="ChoiceList" Value="@(Slot.Stored ? EditOps.Text(Slot.Value) : null)" ValueChanged="v => Set(v)"
-            ShowInfo="@(ShowInfo || Colour)" Sortable="@(ShowInfo && ChoiceList.Any(c => c.Rank < 5))" />
+            ShowInfo="@(ShowInfo || Colour)" Sortable="@(ShowInfo && ChoiceList.Any(c => c.Rank < 5))"
+            Filters="@(ShowInfo && ChoiceList.Any(c => c.Rank < 5 || c.Info.EndsWith("DLC", StringComparison.Ordinal)))" />
     <span class="trail">
         @if (Colour)
         {
