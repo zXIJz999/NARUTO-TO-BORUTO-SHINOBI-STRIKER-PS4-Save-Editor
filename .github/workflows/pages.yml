@@ -1,0 +1,53 @@
+# Builds the web editor (src/ShinobiSave.Web) and publishes it to GitHub Pages on every push to main.
+# One-time setup in the repository: Settings -> Pages -> Source: GitHub Actions.
+# Only the web project is built: the desktop editor needs DevExpress, which CI does not have.
+name: Web editor
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 8.0.x
+
+      - name: Publish
+        run: dotnet publish src/ShinobiSave.Web/ShinobiSave.Web.csproj -c Release -o out
+
+      - name: Prepare for GitHub Pages
+        run: |
+          # The site lives under /<repository name>/, not the domain root.
+          sed -i 's|<base href="/" />|<base href="/${{ github.event.repository.name }}/" />|' out/wwwroot/index.html
+          # Without this, Pages skips the _framework folder (its name starts with an underscore).
+          touch out/wwwroot/.nojekyll
+          cp out/wwwroot/index.html out/wwwroot/404.html
+
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: out/wwwroot
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4
