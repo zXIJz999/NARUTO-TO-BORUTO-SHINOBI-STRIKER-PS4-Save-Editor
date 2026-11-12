@@ -112,12 +112,45 @@ public sealed class GameNames
     public List<NameEntry> Jutsu(string category) =>
         Entries("DT_NinjutsuData").Where(e => Info(e.Id)?["category"]?.EndsWith(category, StringComparison.Ordinal) == true).ToList();
 
-    private static string InfoText(GameItemInfo i)
+    private string InfoText(GameItemInfo i)
     {
-        if (i.Table == "DT_PartsColors") return i["color"] ?? "";
-        if (i.Table == "DT_NinjutsuData") return i["type"] ?? "";
-        if (i.Rarity.Length > 0 && i.Rarity != None) return "Rank " + i.Rarity;
-        return "";
+        string text = i.Table switch
+        {
+            "DT_PartsColors" => i["color"] ?? "",
+            "DT_NinjutsuData" => i["type"] ?? "",
+            _ => i.Rarity.Length > 0 && i.Rarity != None ? "Rank " + i.Rarity : "",
+        };
+        if (i.Table != "DT_PartsColors" && IsDlc(i.Id)) text = text.Length > 0 ? text + " · DLC" : "DLC";
+        return text;
+    }
+
+    // ---- DLC ----------------------------------------------------------------
+
+    private HashSet<string>? _dlcCodes;
+    private Regex? _dlcItem;
+
+    /// <summary>
+    /// True for content from a DLC pack, as far as the game's tables show it: DLC masters
+    /// (DT_DlcMasterAnnouncement), jutsu in the DLC group, and weapons named after a DLC master
+    /// (ID_Weapon_D25_Melee, ID_Weapon_StaffHiruzen). Costumes carry no DLC marker in the tables,
+    /// so they are never reported as DLC.
+    /// </summary>
+    public bool IsDlc(string? id)
+    {
+        if (string.IsNullOrEmpty(id) || Info(id) is not { } i) return false;
+        if (i.Table == "DT_DlcMasterAnnouncement") return true;
+        if (i.Table == "DT_NinjutsuData") return i["group"] == "DLC";
+        if (i.Table is not ("DT_WeaponData" or "DT_NinjaWeaponData")) return false;
+        if (_dlcItem == null)
+        {
+            _dlcCodes = _byTable.TryGetValue("DT_DlcMasterAnnouncement", out var masters)
+                ? masters.Select(m => m.Id.Replace("ID_Master_", "")).ToHashSet(StringComparer.Ordinal)
+                : new HashSet<string>(StringComparer.Ordinal);
+            _dlcItem = _dlcCodes.Count == 0 ? new Regex("$^")
+                // The code follows "_" (ID_Weapon_D25_Melee) or a lower-case letter (StaffHiruzen).
+                : new Regex(@"(?:_|(?<=[a-z]))(" + string.Join("|", _dlcCodes.Select(Regex.Escape)) + @")(?:_|$)", RegexOptions.CultureInvariant);
+        }
+        return _dlcItem.IsMatch(id);
     }
 
     // ---- display names ------------------------------------------------------

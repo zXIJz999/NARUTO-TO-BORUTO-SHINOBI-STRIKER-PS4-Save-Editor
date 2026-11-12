@@ -13,6 +13,7 @@ else
             {
                 <option value="@k">@(EditOps.ItemKinds[k].label)s</option>
             }
+            <option value="@DlcKind">DLC weapons</option>
         </select>
         <button @onclick="AddMissing">Add all I don't have</button>
         <button @onclick="RemoveSelected" disabled="@(_selected.Count == 0)">Remove selected (@_selected.Count)</button>
@@ -47,6 +48,7 @@ else
     [CascadingParameter] public EditorState S { get; set; } = default!;
     private string? _newItem;
     private int _kind = -1;
+    private const int DlcKind = 99; // "Add all I don't have" for DLC weapons and ninja tools only
     private string _query = "";
     private bool _showEmpty;
     private readonly HashSet<int> _selected = new();
@@ -88,7 +90,9 @@ else
 
     private void AddMissing()
     {
-        var wanted = _kind < 0 ? AllItems : S.E(EditOps.ItemKinds[_kind].table);
+        var wanted = _kind < 0 ? AllItems
+            : _kind == DlcKind ? EditOps.DlcItems(S.Names)
+            : S.E(EditOps.ItemKinds[_kind].table);
         var missing = EditOps.MissingItems(Items!, wanted);
         if (missing.Count == 0) { S.Log("You already have all of those."); return; }
         S.Ask($"Add {missing.Count} items to the item box?", () =>

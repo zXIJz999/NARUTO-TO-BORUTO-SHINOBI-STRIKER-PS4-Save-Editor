@@ -55,6 +55,9 @@ public static class EditOps
         return true;
     }
 
+    /// <summary>DLC weapons and ninja tools (the item box kinds the tables mark as DLC).</summary>
+    public static List<NameEntry> DlcItems(GameNames names) => AllItems(names).Where(e => names.IsDlc(e.Id)).ToList();
+
     /// <summary>Items of <paramref name="wanted"/> that the item box does not hold yet.</summary>
     public static List<NameEntry> MissingItems(List<InventoryItem> items, IEnumerable<NameEntry> wanted)
     {

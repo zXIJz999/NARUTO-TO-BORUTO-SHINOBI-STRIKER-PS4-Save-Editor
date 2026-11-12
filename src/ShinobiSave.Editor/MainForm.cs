@@ -30,6 +30,9 @@ internal sealed class MainForm : XtraForm
     /// <summary>Item kinds as stored in the item box (shared with the web editor).</summary>
     private static readonly (string type, string label, string prefix, string table)[] ItemKinds = EditOps.ItemKinds;
 
+    /// <summary>"Add all I don't have" choice for DLC weapons and ninja tools only.</summary>
+    private const string DlcChoice = "DLC weapons";
+
     private readonly SaveSchema _schema = SaveSchema.FromSeed();
     private readonly IdCatalog _catalog = IdCatalog.FromSeed();
     private readonly GameNames _names = GameNames.Load();
@@ -627,6 +630,7 @@ internal sealed class MainForm : XtraForm
         kind.Properties.TextEditStyle = TextEditStyles.DisableTextEditor;
         kind.Properties.Items.Add("Everything");
         foreach (var k in ItemKinds) kind.Properties.Items.Add(k.label + "s");
+        kind.Properties.Items.Add(DlcChoice);
         kind.SelectedIndex = 0;
 
         var showEmpty = new CheckEdit { Text = "Show empty slots", Location = new Point(Ui.Pad, 64), Width = 180 };
@@ -655,7 +659,9 @@ internal sealed class MainForm : XtraForm
         bar.Controls.Add(kind);
         bar.Controls.Add(Ui.Button("Add all I don't have", 758, 180, (_, _) =>
         {
-            var wanted = kind.SelectedIndex <= 0 ? allItems : E(ItemKinds[kind.SelectedIndex - 1].table);
+            var wanted = kind.SelectedIndex <= 0 ? allItems
+                : kind.Text == DlcChoice ? EditOps.DlcItems(_names)
+                : E(ItemKinds[kind.SelectedIndex - 1].table);
             var owned = new HashSet<string>(items.Select(i => i.Id), StringComparer.Ordinal);
             var missing = wanted.Where(e => !owned.Contains(e.Id) && !e.Id.EndsWith("_None", StringComparison.Ordinal) && !e.Id.EndsWith("_Never", StringComparison.Ordinal)).ToList();
             if (missing.Count == 0) { Log("You already have all of those."); return; }
